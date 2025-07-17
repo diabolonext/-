@@ -1,0 +1,24 @@
+{
+  "admin": {
+    "password": "scrypt:32768:8:1$TPLfpJHmgaEUkYoz$0a5fad67ce920e9752899a711867c41f0ae737b97bcf20023738bae2cc914c48a616c25187d59d3d20f282227c979f55addf473e6cebdd18fc56264a10239a2e",
+    "name": "管理員",
+    "email": "admin@example.com",
+    "level1": "",
+    "level2": "",
+    "level3": "",
+    "level4": "",
+    "level5": "",
+    "role": "admin"
+  },
+  "a": {
+    "password": "scrypt:32768:8:1$CczuG0FSJqzuX6H6$74f7cc375326ff1f9c070ca1a5f4301ffb23f0c2aedb4f0101945f4bda66e4f9b902ec7801340a8a174b87b3004afef480c9065aa60edffb4e4206b660659b11",
+    "name": "a",
+    "email": "",
+    "level1": "",
+    "level2": "",
+    "level3": "",
+    "level4": "",
+    "level5": "",
+    "role": "user"
+  }
+}

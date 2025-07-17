@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8" />
+<title>登入系統</title>
+<style>
+  body {
+    font-family: Arial;
+    background-color: #f4f4f4;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 30px;
+  }
+  #login-box, #info-box {
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.1);
+    width: 360px;
+    margin: auto;
+  }
+  #info-box { display: none; }
+  input[type=text], input[type=password], input[type=email] {
+    display: block;
+    margin: 10px 0;
+    padding: 8px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  button {
+    padding: 10px;
+    width: 100%;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  button:hover { background: #0056b3; }
+  #error { color: red; height: 20px; }
+  label { user-select: none; }
+  .toggle-password {
+    font-size: 0.9em;
+    color: #555;
+    margin-top: -8px;
+    margin-bottom: 12px;
+    display: inline-block;
+    cursor: pointer;
+  }
+  h3 {
+    margin-top: 25px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 5px;
+  }
+  .user-list {
+    max-height: 200px;
+    overflow-y: auto;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    padding: 5px;
+  }
+  .user-item {
+    padding: 5px 0;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+  }
+  .user-item:last-child {
+    border-bottom: none;
+  }
+  .user-item button {
+    background: #dc3545;
+    width: 60px;
+    margin-left: 10px;
+  }
+  .user-item button:hover {
+    background: #a71d2a;
+  }
+</style>
+</head>
+<body>
+
+<div id="login-box">
+  <h2>登入系統</h2>
+  <input type="text" id="username" placeholder="帳號" autocomplete="username" />
+  <input type="password" id="password" placeholder="密碼" autocomplete="current-password" />
+  <label class="toggle-password">
+    <input type="checkbox" id="togglePwdLogin" /> 顯示密碼
+  </label>
+  <button onclick="login()">登入</button>
+  <p id="error"></p>
+</div>
+
+<div id="info-box">
+  <h2>歡迎，<span id="display-name"></span>！</h2>
+  <p><strong>帳號：</strong><span id="display-username"></span></p>
+  <p><strong>Email：</strong><span id="display-email"></span></p>
+  <h3>等級資訊</h3>
+  <p><strong>單鈴：</strong><span id="display-level1"></span></p>
+  <p><strong>雙鈴：</strong><span id="display-level2"></span></p>
+  <p><strong>三鈴：</strong><span id="display-level3"></span></p>
+  <p><strong>四鈴：</strong><span id="display-level4"></span></p>
+  <p><strong>：</strong><span id="display-level5"></span></p>
+
+  <div id="admin-panel" style="display:none;">
+    <h3>管理員工具</h3>
+
+    <h4>➕ 新增使用者</h4>
+    <input type="text" id="new-username" placeholder="帳號" />
+    <input type="password" id="new-password" placeholder="密碼" />
+    <input type="text" id="new-name" placeholder="姓名" />
+    <input type="email" id="new-email" placeholder="Email" />
+    <input type="text" id="new-level1" placeholder="Level 1" />
+    <input type="text" id="new-level2" placeholder="Level 2" />
+    <input type="text" id="new-level3" placeholder="Level 3" />
+    <input type="text" id="new-level4" placeholder="Level 4" />
+    <input type="text" id="new-level5" placeholder="Level 5" />
+    <button onclick="addUser()">新增使用者</button>
+
+    <h4>✏️ 修改使用者</h4>
+    <input type="text" id="edit-username" placeholder="帳號" />
+    <input type="password" id="edit-password" placeholder="新密碼 (可空白不修改)" />
+    <input type="text" id="edit-name" placeholder="姓名" />
+    <input type="email" id="edit-email" placeholder="Email" />
+    <input type="text" id="edit-level1" placeholder="Level 1" />
+    <input type="text" id="edit-level2" placeholder="Level 2" />
+    <input type="text" id="edit-level3" placeholder="Level 3" />
+    <input type="text" id="edit-level4" placeholder="Level 4" />
+    <input type="text" id="edit-level5" placeholder="Level 5" />
+    <button onclick="updateUser()">修改使用者</button>
+
+    <h4>🗑️ 刪除使用者</h4>
+    <div class="user-list" id="user-list"></div>
+
+    <h4>📤 匯出所有使用者資料</h4>
+    <button onclick="exportUsers()">匯出 JSON</button>
+  </div>
+
+  <button onclick="logout()">登出</button>
+</div>
+
+<script>
+  document.getElementById("togglePwdLogin").addEventListener("change", function () {
+    document.getElementById("password").type = this.checked ? "text" : "password";
+  });
+
+  let currentUser = null;
+
+  function login() {
+    const user = document.getElementById("username").value.trim();
+    const pass = document.getElementById("password").value;
+    const error = document.getElementById("error");
+    error.textContent = "";
+
+    if (!user || !pass) {
+      error.textContent = "請輸入帳號與密碼";
+      return;
+    }
+
+    fetch("/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: user, password: pass })
+    })
+    .then(res => {
+      if (res.status === 401) throw new Error("帳號或密碼錯誤");
+      if (!res.ok) throw new Error("伺服器錯誤");
+      return res.json();
+    })
+    .then(data => {
+      if (data.status === "success") {
+        currentUser = data.user;
+        localStorage.setItem("loggedInUser", JSON.stringify(currentUser));
+        showInfo(currentUser.username, currentUser);
+      } else {
+        error.textContent = "登入失敗：" + (data.message || "");
+      }
+    })
+    .catch(e => {
+      error.textContent = e.message || "無法連接伺服器";
+    });
+  }
+
+  function showInfo(username, data) {
+    document.getElementById("login-box").style.display = "none";
+    document.getElementById("info-box").style.display = "block";
+
+    document.getElementById("display-username").textContent = username;
+    document.getElementById("display-name").textContent = data.name || "";
+    document.getElementById("display-email").textContent = data.email || "";
+    document.getElementById("display-level1").textContent = data.level1 || "";
+    document.getElementById("display-level2").textContent = data.level2 || "";
+    document.getElementById("display-level3").textContent = data.level3 || "";
+    document.getElementById("display-level4").textContent = data.level4 || "";
+    document.getElementById("display-level5").textContent = data.level5 || "";
+
+    if (data.role === "admin") {
+      document.getElementById("admin-panel").style.display = "block";
+      loadUserList();
+    } else {
+      document.getElementById("admin-panel").style.display = "none";
+    }
+  }
+
+  function logout() {
+    localStorage.removeItem("loggedInUser");
+    currentUser = null;
+    document.getElementById("info-box").style.display = "none";
+    document.getElementById("login-box").style.display = "block";
+    document.getElementById("username").value = "";
+    document.getElementById("password").value = "";
+  }
+
+  // 新增使用者
+  function addUser() {
+    if (!currentUser || currentUser.role !== "admin") return alert("無權限操作");
+
+    const newUser = {
+      username: document.getElementById("new-username").value.trim(),
+      password: document.getElementById("new-password").value,
+      name: document.getElementById("new-name").value.trim(),
+      email: document.getElementById("new-email").value.trim(),
+      level1: document.getElementById("new-level1").value.trim(),
+      level2: document.getElementById("new-level2").value.trim(),
+      level3: document.getElementById("new-level3").value.trim(),
+      level4: document.getElementById("new-level4").value.trim(),
+      level5: document.getElementById("new-level5").value.trim(),
+    };
+
+    if (!newUser.username || !newUser.password) {
+      return alert("帳號與密碼不可為空");
+    }
+
+    fetch("/add_user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ admin_user: currentUser.username, new_user: newUser })
+    })
+    .then(res => res.json())
+    .then(data => {
+      alert(data.message || "操作完成");
+      if (data.status === "success") {
+        clearNewUserForm();
+        loadUserList();
+      }
+    });
+  }
+
+  function clearNewUserForm() {
+    ["new-username","new-password","new-name","new-email","new-level1","new-level2","new-level3","new-level4","new-level5"]
+    .forEach(id => document.getElementById(id).value = "");
+  }
+
+  // 修改使用者
+  function updateUser() {
+    if (!currentUser || currentUser.role !== "admin") return alert("無權限操作");
+
+    const username = document.getElementById("edit-username").value.trim();
+    if (!username) return alert("請輸入帳號");
+
+    const updateData = {
+      password: document.getElementById("edit-password").value,
+      name: document.getElementById("edit-name").value.trim(),
+      email: document.getElementById("edit-email").value.trim(),
+      level1: document.getElementById("edit-level1").value.trim(),
+      level2: document.getElementById("edit-level2").value.trim(),
+      level3: document.getElementById("edit-level3").value.trim(),
+      level4: document.getElementById("edit-level4").value.trim(),
+      level5: document.getElementById("edit-level5").value.trim(),
+    };
+
+    // 清除空字串屬性（不更新）
+    Object.keys(updateData).forEach(k => {
+      if (!updateData[k]) delete updateData[k];
+    });
+
+    fetch("/update_user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ admin_user: currentUser.username, username, update_data: updateData })
+    })
+    .then(res => res.json())
+    .then(data => {
+      alert(data.message || "操作完成");
+      if (data.status === "success") {
+        clearEditUserForm();
+        loadUserList();
+      }
+    });
+  }
+
+  function clearEditUserForm() {
+    ["edit-username","edit-password","edit-name","edit-email","edit-level1","edit-level2","edit-level3","edit-level4","edit-level5"]
+    .forEach(id => document.getElementById(id).value = "");
+  }
+
+  // 載入使用者清單供刪除
+  function loadUserList() {
+    fetch("/export_users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ admin_user: currentUser.username })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.status !== "success") return alert(data.message || "無法取得使用者資料");
+      const users = data.data;
+      const listDiv = document.getElementById("user-list");
+      listDiv.innerHTML = "";
+
+      Object.entries(users).forEach(([username, user]) => {
+        if(user.role === "admin") return; // 管理員不能刪除
+        const div = document.createElement("div");
+        div.className = "user-item";
+        div.textContent = `${username} (${user.name || ""})`;
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "刪除";
+        delBtn.onclick = () => deleteUser(username);
+        div.appendChild(delBtn);
+        listDiv.appendChild(div);
+      });
+    });
+  }
+
+  // 刪除使用者
+  function deleteUser(username) {
+    if (!currentUser || currentUser.role !== "admin") return alert("無權限操作");
+    if (!confirm(`確定刪除使用者 ${username}？`)) return;
+
+    fetch("/delete_user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ admin_user: currentUser.username, username })
+    })
+    .then(res => res.json())
+    .then(data => {
+      alert(data.message || "操作完成");
+      if (data.status === "success") {
+        loadUserList();
+      }
+    });
+  }
+
+  // 匯出所有使用者資料
+  function exportUsers() {
+    if (!currentUser || currentUser.role !== "admin") return alert("無權限操作");
+
+    fetch("/export_users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ admin_user: currentUser.username })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if(data.status !== "success") return alert(data.message || "匯出失敗");
+      // 將資料格式化後顯示，或下載檔案
+      const blob = new Blob([JSON.stringify(data.data, null, 2)], {type: "application/json"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "users_export.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
+
+  // 頁面載入時自動檢查登入
+  window.onload = function () {
+    const user = localStorage.getItem("loggedInUser");
+    if (user) {
+      currentUser = JSON.parse(user);
+      showInfo(currentUser.username, currentUser);
+    }
+  };
+</script>
+
+</body>
+</html>
